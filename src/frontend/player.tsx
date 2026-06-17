@@ -15,12 +15,12 @@ const fakeAlbums = {
 }
 
 //call the spotify api to get the current playing song and display it in the player component
-import {pause} from './pause';
+import {pause} from './pause.tsx';
 import {play} from './play';
 import {progressBar} from './progressBar';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import Vynl from './vynl';
 export const Player = () => {
     const [currentSong, setCurrentSong] = useState(null);
     const [isplaying, setIsPlaying] = useState(false);
@@ -52,3 +52,9 @@ export const Player = () => {
         } catch (error) {
             console.error('Error toggling play/pause:', error);
         }
+    };
+    
+    return ( 
+        <Vynl albumCoverURL={currentSong?.album?.images[0]?.url || ''} />
+    );
+}
