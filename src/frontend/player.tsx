@@ -80,8 +80,13 @@ export const Player = () => {
             return `${currentSong.title}`; 
 
         };
+        
         };
-
+    const handleArtist =() => {
+        if(currentSong){
+            return `${currentSong.album.artists}`;
+        };
+    };
         const durationSec = currentSong ? parseDuration(currentSong.duration) : 0;
 
         useEffect(() => {
@@ -125,16 +130,22 @@ export const Player = () => {
     }
     return (
         <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
-            <button onClick={() => { setSelectedAlbumId(fakeAlbums[0]?.id); setShowPlaylist(true); }}>Change playlist</button>
-            
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
+           <div style={{ position: 'absolute', top: 40, right: 150 }}>
+            <button onClick={() => { setSelectedAlbumId(fakeAlbums[0]?.id); setShowPlaylist(true); }} style={{ padding: '4px 8px', backgroundColor: '#504e4eaa', fontFamily: 'sans-serif',color:'#ccc', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+                Change playlist
+            </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 20 }}>
                 <div>
                     <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
                 </div>
                 
             </div>
-            <div> {handleTitle()} </div>
+            <div>
+            <div style={{padding: 4}}> {handleTitle()} </div>
+            <div style={{padding: 0}}> {handleArtist()} </div>
+            </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
                         <button onClick={handleBackward} aria-label="back">◀</button>
