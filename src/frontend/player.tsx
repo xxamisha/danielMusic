@@ -1,60 +1,61 @@
-//this has compontents that will have the play paudse features adn progress bar
+//this has components that will have the play/pause features and progress bar
 
-//mock data
-const fakeAlbums = {
-
-    id:"1", 
-    name: "definitely maybe",
-    artists: "oasis",
-    songs: [  { title: "champagne supernova", duration: "4:20" }, { title: "live forever", duration: "4:10" } ],
-
-    id:"2",
-    name: "the dark side of the moon",
-    artists: "pink floyd",
-    songs: [  { title: "money", duration: "6:30" }, { title: "time", duration: "7:00" } ],
-}
-
-//call the spotify api to get the current playing song and display it in the player component
-import {pause} from './pause.tsx';
-import {play} from './play';
-import {progressBar} from './progressBar';
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import Vynl from './vynl';
+
+const fakeAlbums = [
+    {
+        id: '1',
+        name: 'Definitely Maybe',
+        artists: 'Oasis',
+        coverUrl: 'https://via.placeholder.com/300?text=Definitely+Maybe',
+        songs: [
+            { title: 'Champagne Supernova', duration: '4:20' },
+            { title: 'Live Forever', duration: '4:10' }
+        ]
+    },
+    {
+        id: '2',
+        name: 'The Dark Side of the Moon',
+        artists: 'Pink Floyd',
+        coverUrl: 'https://via.placeholder.com/300?text=Dark+Side+of+the+Moon',
+        songs: [
+            { title: 'Money', duration: '6:30' },
+            { title: 'Time', duration: '7:00' }
+        ]
+    }
+];
+
 export const Player = () => {
-    const [currentSong, setCurrentSong] = useState(null);
-    const [isplaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
+    const [currentSong, setCurrentSong] = useState<any>(null);
+    const [selectedAlbumId, setSelectedAlbumId] = useState(fakeAlbums[0]?.id);
+    const [isPlaying, setIsPlaying] = useState(false);
 
-    useEffect(() => {
-        const fetchCurrentSong = async () => {
-            try {
-                const response = await axios.get('/api/current-song');
-                setCurrentSong(response.data);
-                setIsPlaying(response.data.is_playing);
-                setProgress(response.data.progress_ms);
-            } catch (error) {
-                console.error('Error fetching current song:', error);
-            }
+    const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
+    const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
 
-        };
-        fetchCurrentSong();
-    }, []);
-
-    const handlePlayPause = async () => {
-        try {
-            if (isplaying) {
-                await pause();
-            } else {
-                await play();
-            }
-            setIsPlaying(!isplaying);
-        } catch (error) {
-            console.error('Error toggling play/pause:', error);
-        }
+    const handleSongSelect = (song: { title: string; duration: string }) => {
+        setCurrentSong({ ...song, album: selectedAlbum });
+        setIsPlaying(false);
     };
-    
-    return ( 
-        <Vynl albumCoverURL={currentSong?.album?.images[0]?.url || ''} />
+
+    const handlePlayPause = () => {
+        setIsPlaying(prev => !prev);
+    };
+
+    return (
+        
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                <div>
+                    <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
+                </div>
+            </div>
+            <div> 
+                <button onClick={handlePlayPause}>
+                    {isPlaying ? 'Pause' : 'Play'}
+                </button>
+            </div>
+        </div>
     );
-}
+}; export default Player; 
