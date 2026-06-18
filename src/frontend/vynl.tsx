@@ -9,7 +9,7 @@ export default function Vynl({ albumCoverURL, isPlaying }: { albumCoverURL: stri
                 height: 80,
                 borderRadius: '50%',
                 overflow: 'hidden',
-                border: '2px solid black',
+                border: '2px solid white',
                 position: 'relative',
                 display: 'flex',
                 alignItems: 'center',
@@ -23,7 +23,7 @@ export default function Vynl({ albumCoverURL, isPlaying }: { albumCoverURL: stri
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
             ) : (
-                <div style={{ width: '100%', height: '100%', backgroundColor: '#4f46e5' }} />
+                <div style={{ width: '100%', height: '100%', backgroundColor: '#ffffff' }} />
             )}
 
             <div
@@ -31,9 +31,9 @@ export default function Vynl({ albumCoverURL, isPlaying }: { albumCoverURL: stri
                     position: 'absolute',
                     width: 12,
                     height: 12,
-                    backgroundColor: '#111827',
+                    backgroundColor: '#ffffff',
                     borderRadius: '50%',
-                    border: '1px solid #d1d5db'
+                    border: '1px solid #ffffff'
                 }}
             />
         </div>

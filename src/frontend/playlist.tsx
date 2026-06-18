@@ -5,8 +5,8 @@ const Playlist = ({ albums, onSongSelect }: { albums: any[]; onSongSelect: (song
         <div>
             {albums.map(album => (
                 <div key={album.id}>
-                    <h3>{album.name}</h3>
-                    <p>{album.artists}</p>
+                    <div>{album.name}</div>
+                    <div>{album.artists}</div>
                     <img src={album.coverUrl} alt={album.name} />
                     <ul>
                         {album.songs.map((song: any, index: number) => (

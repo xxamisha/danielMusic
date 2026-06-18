@@ -1,6 +1,6 @@
 //this has components that will have the play/pause features and progress bar
 
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import Vynl from './vynl';
 import Progressbar from './progressbar';
 const fakeAlbums = [
@@ -26,24 +26,78 @@ const fakeAlbums = [
     }
 ];
 
+function parseDuration(d: string | number | undefined) {
+    if (!d && d !== 0) return 0;
+    const s = String(d);
+    if (s.includes(':')) {
+        const parts = s.split(':').map(p => parseInt(p, 10) || 0);
+        return parts.length === 2 ? parts[0] * 60 + parts[1] : parts.reduce((acc, n) => acc * 60 + n, 0);
+    }
+    const n = parseInt(s, 10);
+    return Number.isNaN(n) ? 0 : n;
+}
+
 export const Player = () => {
     const [currentSong, setCurrentSong] = useState<any>(null);
     const [selectedAlbumId, setSelectedAlbumId] = useState(fakeAlbums[0]?.id);
     const [showPlaylist, setShowPlaylist] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [elapsed, setElapsed] = useState(0);
 
     const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
     const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
 
     const handleSongSelect = (song: { title: string; duration: string }) => {
         setCurrentSong({ ...song, album: selectedAlbum });
+        setElapsed(0);
         setIsPlaying(false);
     };
 
     const handlePlayPause = () => {
         setIsPlaying(prev => !prev);
     };
+    const handleForward = () => {
+        if (!currentSong || !selectedAlbum) return;
+        const currindex = selectedAlbum.songs.findIndex((s: { title: string; duration: string }) => s.title === currentSong.title);
+        if (currindex < selectedAlbum.songs.length - 1) {
+            setCurrentSong({ ...selectedAlbum.songs[currindex + 1], album: selectedAlbum });
+            setElapsed(0);
+            setIsPlaying(true);
+        }
+        
+    };
+    const handleBackward = () => {
+        if (!currentSong || !selectedAlbum) return;
+        const currindex = selectedAlbum.songs.findIndex((s: { title: string; duration: string }) => s.title === currentSong.title);
+        if (currindex > 0) {
+            setCurrentSong({ ...selectedAlbum.songs[currindex - 1], album: selectedAlbum });
+            setElapsed(0);
+            setIsPlaying(true);
+        }
+    };
+    const handleTitle =() => {
+        if(currentSong){
+            return `${currentSong.title}`; 
 
+        };
+        };
+
+        const durationSec = currentSong ? parseDuration(currentSong.duration) : 0;
+
+        useEffect(() => {
+                if (!currentSong) { setElapsed(0); return; }
+                if (!isPlaying) return;
+                const id = window.setInterval(() => {
+                        setElapsed(e => {
+                                if (durationSec && e + 1 >= durationSec) {
+                                        handleForward();
+                                        return 0;
+                                }
+                                return e + 1;
+                        });
+                }, 1000);
+                return () => clearInterval(id);
+        }, [isPlaying, currentSong, durationSec]);
     if (showPlaylist) {
         return (
             <div style={{ padding: 20 }}>
@@ -70,7 +124,7 @@ export const Player = () => {
         );
     }
     return (
-        
+        <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
             <button onClick={() => { setSelectedAlbumId(fakeAlbums[0]?.id); setShowPlaylist(true); }}>Change playlist</button>
             
@@ -78,17 +132,24 @@ export const Player = () => {
                 <div>
                     <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
                 </div>
+                
             </div>
-            <div> 
-            
-                <button onClick={handlePlayPause}>
-                    {isPlaying ? 'Pause' : 'Play'}
-                </button>
-            </div>
-            <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 20}}> 
-                <Progressbar progress={currentSong ? 0.5 : 0} isPlaying={isPlaying} />
+            <div> {handleTitle()} </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
+                        <button onClick={handleBackward} aria-label="back">◀</button>
+                        <button onClick={handlePlayPause} style={{ padding: '8px 16px' }} aria-label="play-pause">
+                            {isPlaying ? 'Pause' : 'Play'}
+                        </button>
+                        <button onClick={handleForward} aria-label="forward">▶</button>
+                    </div>
 
+                    <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 20}}> 
+                        <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} />
+                    </div>
+                </div>
             </div>
         </div>
+        
     );
 }; export default Player; 
