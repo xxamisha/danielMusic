@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Vynl from './vynl';
-
+import Progressbar from './progressbar';
 const fakeAlbums = [
     {
         id: '1',
@@ -29,6 +29,7 @@ const fakeAlbums = [
 export const Player = () => {
     const [currentSong, setCurrentSong] = useState<any>(null);
     const [selectedAlbumId, setSelectedAlbumId] = useState(fakeAlbums[0]?.id);
+    const [showPlaylist, setShowPlaylist] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
 
     const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
@@ -43,9 +44,36 @@ export const Player = () => {
         setIsPlaying(prev => !prev);
     };
 
+    if (showPlaylist) {
+        return (
+            <div style={{ padding: 20 }}>
+                <button onClick={() => setShowPlaylist(false)}>Back</button>
+                <h2>{selectedAlbum?.name ?? 'Albums'}</h2>
+                <ul>
+                    {selectedAlbum?.songs ? (
+                        selectedAlbum.songs.map(s => (
+                            <li key={s.title} style={{ margin: '8px 0' }}>
+                                <button onClick={() => { handleSongSelect(s); setShowPlaylist(false); }}>
+                                    {s.title} ({s.duration})
+                                </button>
+                            </li>
+                        ))
+                    ) : (
+                        fakeAlbums.map(album => (
+                            <li key={album.id} style={{ margin: '8px 0' }}>
+                                <button onClick={() => { setSelectedAlbumId(album.id); }}>{album.name}</button>
+                            </li>
+                        ))
+                    )}
+                </ul>
+            </div>
+        );
+    }
     return (
         
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
+            <button onClick={() => { setSelectedAlbumId(fakeAlbums[0]?.id); setShowPlaylist(true); }}>Change playlist</button>
+            
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 20 }}>
                 <div>
                     <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
@@ -56,6 +84,10 @@ export const Player = () => {
                 <button onClick={handlePlayPause}>
                     {isPlaying ? 'Pause' : 'Play'}
                 </button>
+            </div>
+            <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 20}}> 
+                <Progressbar progress={currentSong ? 0.5 : 0} isPlaying={isPlaying} />
+
             </div>
         </div>
     );
