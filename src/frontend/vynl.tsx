@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 export default function Vynl({ albumCoverURL, isPlaying }: { albumCoverURL: string; isPlaying: boolean }) {
     return (
-        <div style={{ animation: isPlaying? "spin 2.4s linear infinite": "none"}}>
+        <div style={{ animation: isPlaying? "spin 2.4s linear infinite": "none", transformOrigin: 'center' }}>
         <div
             style={{
                 width: 80,

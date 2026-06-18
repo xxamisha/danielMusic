@@ -52,6 +52,7 @@ export const Player = () => {
                 </div>
             </div>
             <div> 
+            
                 <button onClick={handlePlayPause}>
                     {isPlaying ? 'Pause' : 'Play'}
                 </button>
