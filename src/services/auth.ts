@@ -1,5 +1,7 @@
+/// <reference types="vite/client" />
+
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI;
+const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:5173/callback';
 
 const SCOPES = [
   "user-read-playback-state",
@@ -10,24 +12,21 @@ const SCOPES = [
   "user-read-private",
 ].join(" ");
 
-// Generate a random code verifier
-function generateCodeVerifier() {
+function generateCodeVerifier(): string {
   const array = new Uint8Array(64);
   crypto.getRandomValues(array);
   return btoa(String.fromCharCode(...array))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-// Hash it to make the code challenge
-async function generateCodeChallenge(verifier) {
+async function generateCodeChallenge(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
     .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-// Redirect user to Spotify login
-export async function redirectToSpotify() {
+export async function redirectToSpotify(): Promise<void> {
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
   localStorage.setItem("code_verifier", verifier);
@@ -44,9 +43,8 @@ export async function redirectToSpotify() {
   window.location.href = `https://accounts.spotify.com/authorize?${params}`;
 }
 
-// Exchange the code Spotify sends back for an access token
-export async function exchangeToken(code) {
-  const verifier = localStorage.getItem("code_verifier");
+export async function exchangeToken(code: string): Promise<string> {
+  const verifier = localStorage.getItem("code_verifier") ?? '';
 
   const res = await fetch("https://accounts.spotify.com/api/token", {
     method: "POST",
@@ -66,6 +64,6 @@ export async function exchangeToken(code) {
   return data.access_token;
 }
 
-export function getToken() {
+export function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
