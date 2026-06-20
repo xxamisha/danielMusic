@@ -3,28 +3,7 @@
 import React, { useState,useEffect } from 'react';
 import Vynl from './vynl';
 import Progressbar from './progressbar';
-const fakeAlbums = [
-    {
-        id: '1',
-        name: 'Definitely Maybe',
-        artists: 'Oasis',
-        coverUrl: 'https://via.placeholder.com/300?text=Definitely+Maybe',
-        songs: [
-            { title: 'Champagne Supernova', duration: '4:20' },
-            { title: 'Live Forever', duration: '4:10' }
-        ]
-    },
-    {
-        id: '2',
-        name: 'The Dark Side of the Moon',
-        artists: 'Pink Floyd',
-        coverUrl: 'https://via.placeholder.com/300?text=Dark+Side+of+the+Moon',
-        songs: [
-            { title: 'Money', duration: '6:30' },
-            { title: 'Time', duration: '7:00' }
-        ]
-    }
-];
+import { searchAlbums, getAlbumTracks } from '../services/spotify';
 
 function parseDuration(d: string | number | undefined) {
     if (!d && d !== 0) return 0;
@@ -38,14 +17,63 @@ function parseDuration(d: string | number | undefined) {
 }
 
 export const Player = () => {
+    const [albums, setAlbums] = useState<any[]>([]);
     const [currentSong, setCurrentSong] = useState<any>(null);
-    const [selectedAlbumId, setSelectedAlbumId] = useState(fakeAlbums[0]?.id);
+    const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
     const [view, setView] = useState<'playlist' | 'library' | 'player'>('playlist');
     const [isPlaying, setIsPlaying] = useState(false);
     const [elapsed, setElapsed] = useState(0);
     const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set());
+    const [loading, setLoading] = useState(true);
 
-    const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
+    // Fetch albums from Spotify on component mount
+    useEffect(() => {
+        const fetchAlbums = async () => {
+            try {
+                setLoading(true);
+                const results = await searchAlbums('', 10); // Empty query gets diverse results
+                const albumsWithSongs = results.map((album: any) => ({
+                    ...album,
+                    songs: [] // Will be fetched when album is expanded
+                }));
+                setAlbums(albumsWithSongs);
+                if (albumsWithSongs.length > 0) {
+                    setSelectedAlbumId(albumsWithSongs[0].id);
+                }
+            } catch (error) {
+                console.error('Failed to fetch albums:', error);
+                setAlbums([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchAlbums();
+    }, []);
+
+    // Fetch tracks for an album when it's expanded
+    useEffect(() => {
+        const fetchTracks = async () => {
+            if (!selectedAlbumId) return;
+            const album = albums.find(a => a.id === selectedAlbumId);
+            if (!album || album.songs.length > 0) return; // Already fetched
+            
+            try {
+                const tracks = await getAlbumTracks(selectedAlbumId);
+                setAlbums(prevAlbums =>
+                    prevAlbums.map(a =>
+                        a.id === selectedAlbumId
+                            ? { ...a, songs: tracks }
+                            : a
+                    )
+                );
+            } catch (error) {
+                console.error('Failed to fetch tracks:', error);
+            }
+        };
+        fetchTracks();
+    }, [selectedAlbumId, albums]);
+
+    const selectedAlbum = albums.find(album => album.id === selectedAlbumId);
     const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
 
     const handlePlaylistBack = () => {
@@ -154,7 +182,7 @@ export const Player = () => {
                 </div>
                 
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {fakeAlbums.map(album => (
+                    {albums.map(album => (
                         <li key={album.id} style={{ marginBottom: 16, borderBottom: '1px solid #333' }}>
                             <button 
                                 onClick={() => toggleAlbumExpanded(album.id)}
@@ -181,7 +209,7 @@ export const Player = () => {
                             </button>
                             {expandedAlbums.has(album.id) && (
                                 <ul style={{ listStyle: 'none', padding: '0 0 0 16px', marginTop: 8 }}>
-                                    {album.songs.map(song => (
+                                    {album.songs.map((song: any) => (
                                         <li key={song.title} style={{ margin: '6px 0' }}>
                                             <button
                                                 onClick={() => {
