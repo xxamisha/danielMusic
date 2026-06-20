@@ -40,7 +40,7 @@ function parseDuration(d: string | number | undefined) {
 export const Player = () => {
     const [currentSong, setCurrentSong] = useState<any>(null);
     const [selectedAlbumId, setSelectedAlbumId] = useState(fakeAlbums[0]?.id);
-    const [showPlaylist, setShowPlaylist] = useState(false);
+    const [view, setView] = useState<'playlist' | 'library' | 'player'>('playlist');
     const [isPlaying, setIsPlaying] = useState(false);
     const [elapsed, setElapsed] = useState(0);
 
@@ -51,6 +51,7 @@ export const Player = () => {
         setCurrentSong({ ...song, album: selectedAlbum });
         setElapsed(0);
         setIsPlaying(false);
+        setView('player');
     };
 
     const handlePlayPause = () => {
@@ -87,6 +88,8 @@ export const Player = () => {
             return `${currentSong.album.artists}`;
         };
     };
+   
+
         const durationSec = currentSong ? parseDuration(currentSong.duration) : 0;
 
         useEffect(() => {
@@ -103,36 +106,54 @@ export const Player = () => {
                 }, 1000);
                 return () => clearInterval(id);
         }, [isPlaying, currentSong, durationSec]);
-    if (showPlaylist) {
+    
+    // Playlist view - select album
+    if (view === 'playlist') {
         return (
-            <div style={{ padding: 20 }}>
-                <button onClick={() => setShowPlaylist(false)}>Back</button>
-                <h2>{selectedAlbum?.name ?? 'Albums'}</h2>
-                <ul>
-                    {selectedAlbum?.songs ? (
-                        selectedAlbum.songs.map(s => (
-                            <li key={s.title} style={{ margin: '8px 0' }}>
-                                <button onClick={() => { handleSongSelect(s); setShowPlaylist(false); }}>
-                                    {s.title} ({s.duration})
-                                </button>
-                            </li>
-                        ))
-                    ) : (
-                        fakeAlbums.map(album => (
-                            <li key={album.id} style={{ margin: '8px 0' }}>
-                                <button onClick={() => { setSelectedAlbumId(album.id); }}>{album.name}</button>
-                            </li>
-                        ))
-                    )}
+            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', minHeight: '100vh', padding: 40 }}>
+                <button onClick={() => currentSong ? setView('player') : null} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: currentSong ? 'pointer' : 'not-allowed', opacity: currentSong ? 1 : 0.5 }}>
+                    Back
+                </button>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {fakeAlbums.map(album => (
+                        <li key={album.id} style={{ margin: '16px 0' }}>
+                            <button onClick={() => { setSelectedAlbumId(album.id); setView('library'); }} style={{ padding: '8px 16px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 16 }}>
+                                {album.name}
+                            </button>
+                        </li>
+                    ))}
                 </ul>
             </div>
         );
     }
+
+    // Library view - select song from album
+    if (view === 'library') {
+        return (
+            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh' }}>
+                <button onClick={() => setView('playlist')} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                    Back
+                </button>
+                <h2>{selectedAlbum?.name}</h2>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {selectedAlbum?.songs.map(song => (
+                        <li key={song.title} style={{ margin: '8px 0' }}>
+                            <button onClick={() => handleSongSelect(song)} style={{ padding: '8px 12px', backgroundColor: '#333333aa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                                {song.title} ({song.duration})
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    }
+
+    // Player view - playing song
     return (
         <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc' }}>
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
            <div style={{ position: 'absolute', top: 40, right: 150 }}>
-            <button onClick={() => { setSelectedAlbumId(fakeAlbums[0]?.id); setShowPlaylist(true); }} style={{ padding: '4px 8px', backgroundColor: '#504e4eaa', fontFamily: 'sans-serif',color:'#ccc', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => setView('playlist')} style={{ padding: '4px 8px', backgroundColor: '#504e4eaa', fontFamily: 'sans-serif',color:'#ccc', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
                 Change playlist
             </button>
             </div>
