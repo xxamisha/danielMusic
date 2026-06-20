@@ -73,3 +73,14 @@ function formatDuration(ms: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
+export async function getUserAlbums(limit: number = 20) {
+    const data = await fetchWebApi(`v1/me/albums?limit=${limit}`);
+    return data.items.map((item: any) => ({
+        id: item.album.id,
+        name: item.album.name,
+        artists: item.album.artists.map((a: any) => a.name).join(', '),
+        coverUrl: item.album.images[0]?.url || '',
+        releaseDate: item.album.release_date,
+        songs: [],
+    }));
+}

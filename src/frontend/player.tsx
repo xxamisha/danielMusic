@@ -2,9 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import Vynl from './vynl';
 import Progressbar from './progressbar';
-import { searchAlbums, getAlbumTracks } from '../services/spotify';
 import { redirectToSpotify, exchangeToken, getToken } from '../services/auth.ts';
-
+import { getUserAlbums, getAlbumTracks } from '../services/spotify';
 function parseDuration(d: string | number | undefined) {
     if (!d && d !== 0) return 0;
     const s = String(d);
@@ -55,29 +54,28 @@ export const Player = () => {
 
     // ── Fetch albums once authenticated ───────────────────────────────────
     useEffect(() => {
-        if (!isAuthenticated) return;
+    if (!isAuthenticated) return;
 
-        const fetchAlbums = async () => {
-            try {
-                setLoading(true);
-                const results = await searchAlbums('', 10);
-                const albumsWithSongs = results.map((album: any) => ({
-                    ...album,
-                    songs: [],
-                }));
-                setAlbums(albumsWithSongs);
-                if (albumsWithSongs.length > 0) {
-                    setSelectedAlbumId(albumsWithSongs[0].id);
-                }
-            } catch (error) {
-                console.error('Failed to fetch albums:', error);
-                setAlbums([]);
-            } finally {
-                setLoading(false);
+    const fetchAlbums = async () => {
+        try {
+            setLoading(true);
+            const results = await getUserAlbums();
+            const albumsWithSongs = results.map((album: any) => ({
+                ...album,
+                songs: [],
+            }));
+            setAlbums(albumsWithSongs);
+            if (albumsWithSongs.length > 0) {
+                setSelectedAlbumId(albumsWithSongs[0].id);
             }
-        };
-        fetchAlbums();
-    }, [isAuthenticated]);
+        } catch (error) {
+            console.error('Failed to fetch albums:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchAlbums();
+}, [isAuthenticated]);
 
     // ── Fetch tracks when an album is selected ────────────────────────────
     useEffect(() => {
