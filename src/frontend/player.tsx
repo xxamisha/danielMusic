@@ -119,23 +119,28 @@ export const Player = () => {
         }
     };
 
-    const handlePlayPause = async () => {
-        const token = getToken();
-        if (!token) return;
+   
+     const handlePlayPause = async () => {
+    const token = getToken();
+    if (!token || !deviceId) {
+        console.log('No token or device ID yet:', { token, deviceId });
+        return;
+    }
 
-        if (isPlaying) {
-            await fetch('https://api.spotify.com/v1/me/player/pause', {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-        } else {
-            await fetch('https://api.spotify.com/v1/me/player/play', {
-                method: 'PUT',
-                headers: { Authorization: `Bearer ${token}` },
-            });
-        }
-        setIsPlaying(p => !p);
-    };
+    if (isPlaying) {
+        await fetch('https://api.spotify.com/v1/me/player/pause', {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } else {
+        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    }
+    setIsPlaying(p => !p);
+};
+    
 
     const handleForward = () => {
         if (!currentSong || !selectedAlbum) return;
