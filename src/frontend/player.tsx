@@ -223,7 +223,12 @@ export const Player = () => {
                 <div style={{ marginBottom: 20, fontFamily: 'DM Mono, monospace', color: "#878686cc" }}>
                     Your Albums
                 </div>
-                <div style={{flexDirection: 'row', display: 'flex', alignItems: 'flex-start', ...styles.navBtn}}> Back </div>
+                <button 
+    onClick={() => currentSong && setView('player')} 
+    style={{ ...styles.navBtn, opacity: currentSong ? 1 : 0.3, cursor: currentSong ? 'pointer' : 'default', flexDirection:"row"  }}
+>
+    Back
+</button>
                 {loading ? (
                     <div style={{ color: '#555', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>Fetching your albums...</div>
                 ) : (
