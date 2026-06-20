@@ -47,6 +47,14 @@ export const Player = () => {
     const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
     const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
 
+    const handlePlaylistBack = () => {
+        if (currentSong) {
+            setView('player');
+        } else if (selectedAlbumId) {
+            setView('library');
+        }
+    };
+
     const handleSongSelect = (song: { title: string; duration: string }) => {
         setCurrentSong({ ...song, album: selectedAlbum });
         setElapsed(0);
@@ -111,7 +119,7 @@ export const Player = () => {
     if (view === 'playlist') {
         return (
             <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', minHeight: '100vh', padding: 40 }}>
-                <button onClick={() => currentSong ? setView('player') : null} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: currentSong ? 'pointer' : 'not-allowed', opacity: currentSong ? 1 : 0.5 }}>
+                <button onClick={handlePlaylistBack} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                     Back
                 </button>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
