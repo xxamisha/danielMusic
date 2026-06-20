@@ -1,9 +1,10 @@
-//this has components that will have the play/pause features and progress bar
 import React, { useState, useEffect } from 'react';
 import Vynl from './vynl';
 import Progressbar from './progressbar';
-import { redirectToSpotify, exchangeToken, getToken } from '../services/auth.ts';
-import { getUserAlbums, getAlbumTracks } from '../services/spotify';
+import { redirectToSpotify, exchangeToken, getToken } from '../services/auth';
+import { getUserAlbums, getAlbumTracks, playTrack } from '../services/spotify';
+import { initPlayer } from '../services/player';
+
 function parseDuration(d: string | number | undefined) {
     if (!d && d !== 0) return 0;
     const s = String(d);
@@ -21,11 +22,12 @@ export const Player = () => {
     const [albums, setAlbums] = useState<any[]>([]);
     const [currentSong, setCurrentSong] = useState<any>(null);
     const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
-    const [view, setView] = useState<'playlist' | 'library' | 'player'>('playlist');
+    const [view, setView] = useState<'playlist' | 'player'>('playlist');
     const [isPlaying, setIsPlaying] = useState(false);
     const [elapsed, setElapsed] = useState(0);
     const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
+    const [deviceId, setDeviceId] = useState<string | null>(null); // ← inside component now
 
     // ── Handle OAuth callback & check for existing token ──────────────────
     useEffect(() => {
@@ -33,9 +35,8 @@ export const Player = () => {
         const code = params.get('code');
 
         if (code) {
-            // We're back from Spotify — exchange the code for a token
             exchangeToken(code).then(() => {
-                window.history.replaceState({}, '', '/'); // Clean ?code= from URL
+                window.history.replaceState({}, '', '/');
                 setIsAuthenticated(true);
                 setAuthLoading(false);
             }).catch(err => {
@@ -43,41 +44,49 @@ export const Player = () => {
                 setAuthLoading(false);
             });
         } else if (getToken()) {
-            // Already have a token from a previous session
             setIsAuthenticated(true);
             setAuthLoading(false);
         } else {
-            // Not logged in
             setAuthLoading(false);
         }
     }, []);
 
+    // ── Init Spotify Web Playback SDK once authenticated ──────────────────
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const token = getToken();
+        if (!token) return;
+
+        initPlayer(
+            token,
+            (id) => setDeviceId(id),
+            (state) => {
+                setIsPlaying(!state.paused);
+                setElapsed(Math.floor(state.position / 1000));
+            }
+        );
+    }, [isAuthenticated]);
+
     // ── Fetch albums once authenticated ───────────────────────────────────
     useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const fetchAlbums = async () => {
-        try {
-            setLoading(true);
-            const results = await getUserAlbums();
-            const albumsWithSongs = results.map((album: any) => ({
-                ...album,
-                songs: [],
-            }));
-            setAlbums(albumsWithSongs);
-            if (albumsWithSongs.length > 0) {
-                setSelectedAlbumId(albumsWithSongs[0].id);
+        if (!isAuthenticated) return;
+        const fetchAlbums = async () => {
+            try {
+                setLoading(true);
+                const results = await getUserAlbums();
+                const albumsWithSongs = results.map((album: any) => ({ ...album, songs: [] }));
+                setAlbums(albumsWithSongs);
+                if (albumsWithSongs.length > 0) setSelectedAlbumId(albumsWithSongs[0].id);
+            } catch (error) {
+                console.error('Failed to fetch albums:', error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error('Failed to fetch albums:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchAlbums();
-}, [isAuthenticated]);
+        };
+        fetchAlbums();
+    }, [isAuthenticated]);
 
-    // ── Fetch tracks when an album is selected ────────────────────────────
+    // ── Fetch tracks when an album is expanded ────────────────────────────
     useEffect(() => {
         const fetchTracks = async () => {
             if (!selectedAlbumId) return;
@@ -86,11 +95,7 @@ export const Player = () => {
 
             try {
                 const tracks = await getAlbumTracks(selectedAlbumId);
-                setAlbums(prevAlbums =>
-                    prevAlbums.map(a =>
-                        a.id === selectedAlbumId ? { ...a, songs: tracks } : a
-                    )
-                );
+                setAlbums(prev => prev.map(a => a.id === selectedAlbumId ? { ...a, songs: tracks } : a));
             } catch (error) {
                 console.error('Failed to fetch tracks:', error);
             }
@@ -102,27 +107,64 @@ export const Player = () => {
     const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
     const durationSec = currentSong ? parseDuration(currentSong.duration) : 0;
 
+    // ── Playback controls ─────────────────────────────────────────────────
+    const handleSongSelect = (song: any, album: any) => {
+        setCurrentSong({ ...song, album });
+        setElapsed(0);
+        setIsPlaying(true);
+        setView('player');
+
+        if (deviceId && song.uri) {
+            playTrack(deviceId, song.uri);
+        }
+    };
+
+    const handlePlayPause = async () => {
+        const token = getToken();
+        if (!token) return;
+
+        if (isPlaying) {
+            await fetch('https://api.spotify.com/v1/me/player/pause', {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        } else {
+            await fetch('https://api.spotify.com/v1/me/player/play', {
+                method: 'PUT',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        }
+        setIsPlaying(p => !p);
+    };
+
     const handleForward = () => {
         if (!currentSong || !selectedAlbum) return;
-        const currindex = selectedAlbum.songs.findIndex((s: any) => s.title === currentSong.title);
-        if (currindex < selectedAlbum.songs.length - 1) {
-            setCurrentSong({ ...selectedAlbum.songs[currindex + 1], album: selectedAlbum });
-            setElapsed(0);
-            setIsPlaying(true);
+        const idx = selectedAlbum.songs.findIndex((s: any) => s.title === currentSong.title);
+        if (idx < selectedAlbum.songs.length - 1) {
+            const next = selectedAlbum.songs[idx + 1];
+            handleSongSelect(next, selectedAlbum);
         }
     };
 
     const handleBackward = () => {
         if (!currentSong || !selectedAlbum) return;
-        const currindex = selectedAlbum.songs.findIndex((s: any) => s.title === currentSong.title);
-        if (currindex > 0) {
-            setCurrentSong({ ...selectedAlbum.songs[currindex - 1], album: selectedAlbum });
-            setElapsed(0);
-            setIsPlaying(true);
+        const idx = selectedAlbum.songs.findIndex((s: any) => s.title === currentSong.title);
+        if (idx > 0) {
+            const prev = selectedAlbum.songs[idx - 1];
+            handleSongSelect(prev, selectedAlbum);
         }
     };
 
-    // ── Progress timer ────────────────────────────────────────────────────
+    const toggleAlbumExpanded = (albumId: string) => {
+        setSelectedAlbumId(albumId);
+        setExpandedAlbums(prev => {
+            const next = new Set(prev);
+            next.has(albumId) ? next.delete(albumId) : next.add(albumId);
+            return next;
+        });
+    };
+
+    // ── Progress timer (fallback sync) ────────────────────────────────────
     useEffect(() => {
         if (!currentSong || !isPlaying) return;
         const id = window.setInterval(() => {
@@ -137,22 +179,11 @@ export const Player = () => {
         return () => clearInterval(id);
     }, [isPlaying, currentSong, durationSec]);
 
-    const toggleAlbumExpanded = (albumId: string) => {
-        setSelectedAlbumId(albumId);
-        setExpandedAlbums(prev => {
-            const next = new Set(prev);
-            next.has(albumId) ? next.delete(albumId) : next.add(albumId);
-            return next;
-        });
-    };
-
-    // ── Loading spinner ───────────────────────────────────────────────────
+    // ── Loading ───────────────────────────────────────────────────────────
     if (authLoading) {
         return (
             <div style={styles.centered}>
-                <div style={{ color: '#555', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>
-                    Loading...
-                </div>
+                <div style={{ color: '#555', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>Loading...</div>
             </div>
         );
     }
@@ -163,14 +194,7 @@ export const Player = () => {
             <div style={styles.centered}>
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 48, marginBottom: 24 }}>🎵</div>
-                    <div style={{
-                        fontFamily: 'DM Mono, monospace',
-                        fontSize: 13,
-                        color: '#555',
-                        marginBottom: 32,
-                        letterSpacing: '0.1em',
-                        textTransform: 'uppercase',
-                    }}>
+                    <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 13, color: '#555', marginBottom: 32, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                         Connect your Spotify to get started
                     </div>
                     <button onClick={redirectToSpotify} style={styles.spotifyBtn}>
@@ -184,23 +208,16 @@ export const Player = () => {
         );
     }
 
-    // ── Playlist / library view ───────────────────────────────────────────
+    // ── Playlist view ─────────────────────────────────────────────────────
     if (view === 'playlist') {
         return (
             <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh' }}>
-                <div style={{ marginBottom: 20, flexDirection: 'row', display: 'flex', alignItems: 'center', gap: 20 }}>
-                    <button onClick={() => setView('playlist')} style={styles.navBtn}>
-                        Back
-                    </button>
-                </div>
-                <div style={{ marginBottom: 20, flexDirection: 'row', display: 'flex', alignItems: 'center', gap: 60, fontFamily: 'DM Mono, monospace', color: "#878686cc" }}>
-                    Your Playlists
+                <div style={{ marginBottom: 20, fontFamily: 'DM Mono, monospace', color: "#878686cc" }}>
+                    Your Albums
                 </div>
 
                 {loading ? (
-                    <div style={{ color: '#555', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>
-                        Fetching your albums...
-                    </div>
+                    <div style={{ color: '#555', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>Fetching your albums...</div>
                 ) : (
                     <ul style={{ listStyle: 'none', padding: 0 }}>
                         {albums.map(album => (
@@ -208,19 +225,11 @@ export const Player = () => {
                                 <button
                                     onClick={() => toggleAlbumExpanded(album.id)}
                                     style={{
-                                        padding: '12px 0',
-                                        width: '100%',
-                                        textAlign: 'left',
-                                        backgroundColor: 'transparent',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontSize: 16,
-                                        fontWeight: 500,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        fontFamily: 'DM Mono, monospace',
-                                        color: "#dadadacc",
+                                        padding: '12px 0', width: '100%', textAlign: 'left',
+                                        backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
+                                        fontSize: 16, fontWeight: 500, display: 'flex',
+                                        justifyContent: 'space-between', alignItems: 'center',
+                                        fontFamily: 'DM Mono, monospace', color: "#dadadacc",
                                     }}
                                 >
                                     <span>{album.name}</span>
@@ -228,6 +237,7 @@ export const Player = () => {
                                         {expandedAlbums.has(album.id) ? '▼' : '▶'}
                                     </span>
                                 </button>
+
                                 {expandedAlbums.has(album.id) && (
                                     <ul style={{ listStyle: 'none', padding: '0 0 0 16px', marginTop: 8 }}>
                                         {album.songs.length === 0 ? (
@@ -237,21 +247,11 @@ export const Player = () => {
                                         ) : album.songs.map((song: any) => (
                                             <li key={song.title} style={{ margin: '6px 0' }}>
                                                 <button
-                                                    onClick={() => {
-                                                        setCurrentSong({ ...song, album });
-                                                        setElapsed(0);
-                                                        setIsPlaying(false);
-                                                        setView('player');
-                                                    }}
+                                                    onClick={() => handleSongSelect(song, album)}
                                                     style={{
-                                                        padding: '6px 8px',
-                                                        backgroundColor: 'transparent',
-                                                        border: 'none',
-                                                        borderRadius: 4,
-                                                        cursor: 'pointer',
-                                                        fontSize: 14,
-                                                        fontFamily: 'DM Mono, monospace',
-                                                        color: "#c0bebecc",
+                                                        padding: '6px 8px', backgroundColor: 'transparent',
+                                                        border: 'none', borderRadius: 4, cursor: 'pointer',
+                                                        fontSize: 14, fontFamily: 'DM Mono, monospace', color: "#c0bebecc",
                                                     }}
                                                 >
                                                     {song.title} ({song.duration})
@@ -277,27 +277,26 @@ export const Player = () => {
                         Change playlist
                     </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-                    <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
-                </div>
-                <div>
-                    <div style={{
-                        padding: 6, fontSize: '20px', fontWeight: 600,
-                        letterSpacing: '-0.02em', marginBottom: '4px',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
+
+                <Vynl albumCoverURL={currentSong?.album.coverUrl ?? defaultCoverUrl} isPlaying={isPlaying} />
+
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ padding: 6, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {currentSong?.title}
                     </div>
-                    <div style={{ padding: 4 }}>{currentSong?.album?.artists}</div>
+                    <div style={{ padding: 4, color: '#888' }}>{currentSong?.album?.artists}</div>
                 </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                         <button onClick={handleBackward} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
                                 <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
                             </svg>
                         </button>
-                        <button onClick={() => setIsPlaying(p => !p)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+
+                        {/* ← now calls handlePlayPause, not just setIsPlaying */}
+                        <button onClick={handlePlayPause} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                             {isPlaying ? (
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
                                     <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
@@ -308,15 +307,15 @@ export const Player = () => {
                                 </svg>
                             )}
                         </button>
+
                         <button onClick={handleForward} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
                                 <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z" />
                             </svg>
                         </button>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end', gap: 30 }}>
-                        <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} onSeek={(newElapsed) => setElapsed(newElapsed)} />
-                    </div>
+
+                    <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} onSeek={(newElapsed) => setElapsed(newElapsed)} />
                 </div>
             </div>
         </div>

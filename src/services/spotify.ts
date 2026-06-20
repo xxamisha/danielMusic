@@ -35,6 +35,7 @@ export async function getAlbumTracks(albumId: string) {
     durationMs: track.duration_ms,
     artist: track.artists.map((a: any) => a.name).join(', '),
     previewUrl: track.preview_url,
+    uri: track.uri,
   }));
 }
 
@@ -49,6 +50,7 @@ export async function getTopTracks(limit: number = 20) {
     durationMs: track.duration_ms,
     coverUrl: track.album.images[0]?.url || '',
     previewUrl: track.preview_url,
+    uri: track.uri,
   }));
 }
 
@@ -83,4 +85,9 @@ export async function getUserAlbums(limit: number = 20) {
         releaseDate: item.album.release_date,
         songs: [],
     }));
+}
+export async function playTrack(deviceId: string, trackUri: string) {
+    await fetchWebApi(`v1/me/player/play?device_id=${deviceId}`, 'PUT', {
+        uris: [trackUri],
+    });
 }
