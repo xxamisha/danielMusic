@@ -35,6 +35,9 @@ export const Player = () => {
         const code = params.get('code');
 
         if (code) {
+            localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('code_verifier');
             exchangeToken(code).then(() => {
                 window.history.replaceState({}, '', '/');
                 setIsAuthenticated(true);
