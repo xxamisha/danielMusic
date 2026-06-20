@@ -328,7 +328,16 @@ export const Player = () => {
                         </button>
                     </div>
 
-                    <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} onSeek={(newElapsed) => setElapsed(newElapsed)} />
+                    <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} onSeek={async (newElapsed) => {
+        setElapsed(newElapsed);
+        const token = getToken();
+        if (!token) return;
+        await fetch('https://api.spotify.com/v1/me/player/seek?position_ms=' + newElapsed * 1000, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    }} 
+/>
                 </div>
             </div>
         </div>
