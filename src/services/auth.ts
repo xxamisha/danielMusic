@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'http://localhost:5173/callback';
+const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI || 'https://danielsmusic.netlify.app/';
 
 const SCOPES = [
   "user-read-playback-state",
