@@ -43,6 +43,7 @@ export const Player = () => {
     const [view, setView] = useState<'playlist' | 'library' | 'player'>('playlist');
     const [isPlaying, setIsPlaying] = useState(false);
     const [elapsed, setElapsed] = useState(0);
+    const [expandedAlbums, setExpandedAlbums] = useState<Set<string>>(new Set());
 
     const selectedAlbum = fakeAlbums.find(album => album.id === selectedAlbumId);
     const defaultCoverUrl = selectedAlbum?.coverUrl ?? '';
@@ -50,9 +51,17 @@ export const Player = () => {
     const handlePlaylistBack = () => {
         if (currentSong) {
             setView('player');
-        } else if (selectedAlbumId) {
-            setView('library');
         }
+    };
+
+    const toggleAlbumExpanded = (albumId: string) => {
+        const newExpanded = new Set(expandedAlbums);
+        if (newExpanded.has(albumId)) {
+            newExpanded.delete(albumId);
+        } else {
+            newExpanded.add(albumId);
+        }
+        setExpandedAlbums(newExpanded);
     };
 
     const handleSongSelect = (song: { title: string; duration: string }) => {
@@ -115,40 +124,90 @@ export const Player = () => {
                 return () => clearInterval(id);
         }, [isPlaying, currentSong, durationSec]);
     
-    // Playlist view - select album
+   
+
+    // Library view - accordion of albums and songs
     if (view === 'playlist') {
         return (
-            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', minHeight: '100vh', padding: 40 }}>
-                <button onClick={handlePlaylistBack} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                    Back
-                </button>
+            
+            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh' }}>
+                
+                <div style={{ marginBottom: 20, flexDirection: 'row', display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <button onClick={() => setView('playlist')} style={{
+                        background: 'none',
+                        border: '1px solid #2a2a2a',
+                        color: '#888',
+                        fontFamily: 'DM Mono, monospace',
+                        fontSize: '11px',
+                        letterSpacing: '0.1em',
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}>
+                        Back
+                    </button>
+
+                </div>
+                <div style={{marginBottom:20,flexDirection: 'row', display: 'flex', alignItems: 'center', gap: 60, fontFamily: 'DM Mono, monospace', color:"#878686cc" }}>
+                    Your Playlists
+                </div>
+                
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {fakeAlbums.map(album => (
-                        <li key={album.id} style={{ margin: '16px 0' }}>
-                            <button onClick={() => { setSelectedAlbumId(album.id); setView('library'); }} style={{ padding: '8px 16px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 16 }}>
-                                {album.name}
+                        <li key={album.id} style={{ marginBottom: 16, borderBottom: '1px solid #333' }}>
+                            <button 
+                                onClick={() => toggleAlbumExpanded(album.id)}
+                                style={{
+                                    padding: '12px 0',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    backgroundColor: 'transparent',
+                                    
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: 16,
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    fontFamily: 'DM Mono, monospace', color:"#dadadacc"
+                                }}
+                            >
+                                <span>{album.name}</span>
+                                <span style={{ fontSize: 12, opacity: 0.7 }}>
+                                    {expandedAlbums.has(album.id) ? '▼' : '▶'}
+                                </span>
                             </button>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-        );
-    }
-
-    // Library view - select song from album
-    if (view === 'library') {
-        return (
-            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh' }}>
-                <button onClick={() => setView('playlist')} style={{ marginBottom: 20, padding: '4px 8px', backgroundColor: '#504e4eaa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                    Back
-                </button>
-                <h2>{selectedAlbum?.name}</h2>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {selectedAlbum?.songs.map(song => (
-                        <li key={song.title} style={{ margin: '8px 0' }}>
-                            <button onClick={() => handleSongSelect(song)} style={{ padding: '8px 12px', backgroundColor: '#333333aa', color: '#ccc', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                                {song.title} ({song.duration})
-                            </button>
+                            {expandedAlbums.has(album.id) && (
+                                <ul style={{ listStyle: 'none', padding: '0 0 0 16px', marginTop: 8 }}>
+                                    {album.songs.map(song => (
+                                        <li key={song.title} style={{ margin: '6px 0' }}>
+                                            <button
+                                                onClick={() => {
+                                                    setCurrentSong({ ...song, album });
+                                                    setElapsed(0);
+                                                    setIsPlaying(false);
+                                                    setView('player');
+                                                }}
+                                                style={{
+                                                    padding: '6px 8px',
+                                                    backgroundColor: 'transparent',
+        
+                                                    border: 'none',
+                                                    borderRadius: 4,
+                                                    cursor: 'pointer',
+                                                    fontSize: 14,
+                                                    fontFamily: 'DM Mono, monospace', 
+                                                    color:"#c0bebecc"
+                                                }}
+                                            >
+                                                {song.title} ({song.duration})
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -161,7 +220,18 @@ export const Player = () => {
         <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc' }}>
         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, height: '100vh' }}>
            <div style={{ position: 'absolute', top: 40, right: 150 }}>
-            <button onClick={() => setView('playlist')} style={{ padding: '4px 8px', backgroundColor: '#504e4eaa', fontFamily: 'sans-serif',color:'#ccc', borderRadius: 4, border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => setView('playlist')} style={{
+              background: 'none',
+              border: '1px solid #2a2a2a',
+              color: '#888',
+              fontFamily: 'DM Mono, monospace',
+              fontSize: '11px',
+              letterSpacing: '0.1em',
+              padding: '6px 14px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}>
                 Change playlist
             </button>
             </div>
@@ -172,8 +242,14 @@ export const Player = () => {
                 
             </div>
             <div>
-            <div style={{padding: 4}}> {handleTitle()} </div>
-            <div style={{padding: 0}}> {handleArtist()} </div>
+            <div style={{padding: 6, fontSize: '20px',
+          fontWeight: 600,
+          letterSpacing: '-0.02em',
+          marginBottom: '4px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis;'}}> {handleTitle()} </div>
+            <div style={{padding: 4}}> {handleArtist()} </div>
             </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
@@ -196,8 +272,8 @@ export const Player = () => {
                   </svg></button>
                     </div>
 
-                    <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 20}}> 
-                        <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} />
+                    <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 30}}> 
+                        <Progressbar elapsed={elapsed} duration={durationSec} isPlaying={isPlaying} onSeek={(newElapsed) => setElapsed(newElapsed)} />
                     </div>
                 </div>
             </div>
