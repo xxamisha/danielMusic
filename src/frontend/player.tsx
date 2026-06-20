@@ -219,7 +219,7 @@ export const Player = () => {
     // ── Playlist view ─────────────────────────────────────────────────────
     if (view === 'playlist') {
         return (
-            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh' }}>
+            <div style={{ backgroundColor: '#000000', fontFamily: 'sans-serif', color: '#dadadacc', padding: 40, minHeight: '100vh', overflowY:'auto' }}>
                 <div style={{ marginBottom: 20, fontFamily: 'DM Mono, monospace', color: "#878686cc" }}>
                     Your Albums
                 </div>
@@ -339,6 +339,7 @@ const styles = {
     centered: {
         backgroundColor: '#000',
         minHeight: '100vh',
+        overFlowY:'auto',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
