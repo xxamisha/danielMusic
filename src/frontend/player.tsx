@@ -177,11 +177,23 @@ export const Player = () => {
             </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, justifyContent: 'center' }}>
-                        <button onClick={handleBackward} aria-label="back">◀</button>
-                        <button onClick={handlePlayPause} style={{ padding: '8px 16px' }} aria-label="play-pause">
-                            {isPlaying ? 'Pause' : 'Play'}
+                        <button onClick={handleBackward} style ={{background:'transparent', border:'none'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
+                  </svg></button>
+                        <button className="play-btn" onClick={handlePlayPause} style={{ background: 'transparent', border:'none' }}>
+                            {isPlaying ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                    </svg>
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" style={{ marginLeft: 2 }}>
+                      <path d="M8 5v14l11-7z"/>
+                    </svg>
+                  )}
                         </button>
-                        <button onClick={handleForward} aria-label="forward">▶</button>
+                        <button onClick={handleForward} style ={{background:'transparent', border:'none'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z"/>
+                  </svg></button>
                     </div>
 
                     <div style={{ display:'flex', flexDirection: 'row',alignItems: 'flex-end',gap: 20}}> 
